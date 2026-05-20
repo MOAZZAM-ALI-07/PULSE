@@ -3,7 +3,7 @@ import '../models/analysis_model.dart';
 
 class ApiService {
   // Use 10.0.2.2 for Android emulator, or localhost for iOS simulator
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  static const String baseUrl = 'http://192.168.0.106:8000/api';
   final Dio _dio = Dio(BaseOptions(baseUrl: baseUrl));
 
   Future<Map<String, dynamic>> ingest(String text, String domain, {String? runId}) async {

@@ -11,6 +11,9 @@ from gemini_service import (
     generate_actions, simulate_execution
 )
 from database import save_analysis, log_step, get_analysis
+from agent_orchestrator import AgentOrchestrator
+from reflection_agent import ReflectionAgent
+from alert_agent import AlertAgent
 
 router = APIRouter(prefix="/api", tags=["pipeline"])
 
@@ -153,3 +156,53 @@ async def execute(request: AnalysisRequest):
     except Exception as e:
         await log_step(run_id, "execute", "failed", {"error": str(e)})
         raise HTTPException(status_code=500, detail=f"Execution simulation failed: {str(e)}")
+    
+@router.post("/orchestrate")
+async def orchestrate(request: AnalysisRequest):
+    """
+    MAIN AGENTIC ENDPOINT.
+    Single call — orchestrator runs all 5 agents autonomously.
+    Returns full pipeline output + agent trace logs.
+    Judges yahi dekhenge.
+    """
+    orchestrator = AgentOrchestrator(run_id=request.run_id)
+    result = await orchestrator.run(request.text, request.domain or "Business")
+
+    # Auto-run alert agent after orchestration
+    alert_agent = AlertAgent()
+    alerts = await alert_agent.scan_and_alert(result["run_id"], result)
+    result["alerts"] = alerts
+
+    return result
+
+
+@router.post("/reflect/{run_id}")
+async def reflect(run_id: str, request: AnalysisRequest):
+    """
+    REFLECTION ENDPOINT.
+    Reviews pipeline output quality. Returns score, weaknesses, rerun suggestion.
+    Demo mein dikhao: 'PULSE apni galtiyan khud pakad sakta hai.'
+    """
+    analysis = await get_analysis(run_id)
+    if not analysis:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+
+    agent = ReflectionAgent()
+    result = await agent.reflect(run_id, request.text, analysis)
+    return result
+
+
+@router.get("/alerts/{run_id}")
+async def get_alerts(run_id: str):
+    """
+    PROACTIVE ALERTS ENDPOINT.
+    Returns all auto-generated alerts — no user input needed.
+    Demo mein dikhao: 'Yeh alert user ke poochne se pehle generate hua.'
+    """
+    analysis = await get_analysis(run_id)
+    if not analysis:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+
+    agent = AlertAgent()
+    result = await agent.scan_and_alert(run_id, analysis)
+    return result

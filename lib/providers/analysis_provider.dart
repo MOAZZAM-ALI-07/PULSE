@@ -4,9 +4,55 @@ import '../models/analysis_model.dart';
 
 final apiServiceProvider = Provider((ref) => ApiService());
 
-final historyProvider = FutureProvider<List<AnalysisModel>>((ref) async {
-  final api = ref.watch(apiServiceProvider);
-  return api.getHistory();
+class HistoryNotifier extends StateNotifier<AsyncValue<List<AnalysisModel>>> {
+  final ApiService _api;
+  List<AnalysisModel> _fullHistory = [];
+  String _searchQuery = '';
+  
+  HistoryNotifier(this._api) : super(const AsyncValue.loading()) {
+    refresh();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    try {
+      _fullHistory = await _api.getHistory();
+      _applyFilters();
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  void search(String query) {
+    _searchQuery = query;
+    _applyFilters();
+  }
+
+  void deleteItem(String runId) {
+    _fullHistory.removeWhere((item) => item.runId == runId);
+    _applyFilters();
+  }
+
+  void clearAll() {
+    _fullHistory.clear();
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    if (_searchQuery.isEmpty) {
+      state = AsyncValue.data([..._fullHistory]);
+    } else {
+      final filtered = _fullHistory.where((item) => 
+        item.domain.toLowerCase().contains(_searchQuery.toLowerCase()) || 
+        item.severity.toLowerCase().contains(_searchQuery.toLowerCase())
+      ).toList();
+      state = AsyncValue.data(filtered);
+    }
+  }
+}
+
+final historyProvider = StateNotifierProvider<HistoryNotifier, AsyncValue<List<AnalysisModel>>>((ref) {
+  return HistoryNotifier(ref.watch(apiServiceProvider));
 });
 
 class CurrentAnalysisState {
