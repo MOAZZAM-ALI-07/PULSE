@@ -21,6 +21,8 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
   late TabController _tabController;
 
   void _showActionSnackbar(String message, bool isDark) {
+    // Purane SnackBar ko clear karne ke liye taaki overlapping na ho
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -35,6 +37,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentState = ref.read(analysisProvider);
+      if (currentState.result == null || currentState.runId != widget.runId) {
+        ref.read(analysisProvider.notifier).loadAnalysis(widget.runId);
+      }
+    });
   }
 
   @override
@@ -53,7 +61,34 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
     if (analysis == null) {
       return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(color: Theme.of(context).primaryColor).animate().fadeIn(),
+          child: state.errorMessage != null
+              ? Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red, size: 60),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Failed to load analysis: ${state.errorMessage}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00E676)),
+                        onPressed: () {
+                          ref.read(analysisProvider.notifier).reset();
+                          Navigator.pop(context);
+                        },
+                        child: const Text('GO BACK', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                )
+              : CircularProgressIndicator(color: Theme.of(context).primaryColor)
+                  .animate()
+                  .fadeIn(),
         ),
       );
     }
@@ -61,6 +96,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        // Glassmorphism ke liye background color transparent aur elevation 0 kiya
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           onPressed: () {
@@ -72,10 +110,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
             );
           },
         ),
-        title: Text('Analysis Results', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Analysis Results', 
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 16),
+            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8), // Padding fix ki
             decoration: BoxDecoration(
               color: Theme.of(context).primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
@@ -90,7 +131,8 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
                     pageBuilder: (context, animation, secondaryAnimation) => ReportScreen(analysis: analysis),
                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
                       return SlideTransition(
-                        position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+                        position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                            .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
                         child: child,
                       );
                     },
@@ -121,7 +163,11 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
                     color: Theme.of(context).primaryColor,
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
-                      BoxShadow(color: Theme.of(context).primaryColor.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 4))
+                      BoxShadow(
+                        color: Theme.of(context).primaryColor.withOpacity(0.4), 
+                        blurRadius: 10, 
+                        offset: const Offset(0, 4),
+                      )
                     ]
                   ),
                   labelColor: Colors.white,
@@ -165,16 +211,15 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
               child: Container(color: Colors.transparent),
             ),
           ],
-          SafeArea(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildInsightsTab(analysis.insightsData?['insights'] ?? [], isDark),
-                _buildActionsTab(analysis.actionsData?['actions'] ?? [], isDark),
-                _buildExecutionTab(analysis.executionData ?? {}, isDark),
-                _buildRawSignalsTab(analysis.ingestionData?['signals'] ?? [], isDark),
-              ],
-            ),
+          // SafeArea ko hataya taaki background dynamic blur sahi se dikhe, padding ListView me handle ki hai
+          TabBarView(
+            controller: _tabController,
+            children: [
+              _buildInsightsTab(analysis.insightsData?['insights'] ?? [], isDark),
+              _buildActionsTab(analysis.actionsData?['actions'] ?? [], isDark),
+              _buildExecutionTab(analysis.executionData ?? {}, isDark),
+              _buildRawSignalsTab(analysis.ingestionData?['signals'] ?? [], isDark),
+            ],
           ),
         ],
       ),
@@ -185,7 +230,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface.withOpacity(0.6) : Colors.white,
+        color: isDark ? AppColors.darkSurface.withOpacity(0.6) : Colors.white.withOpacity(0.8), // Light mode me bhi opacity lagayi glass effect ke liye
         borderRadius: BorderRadius.circular(24),
         border: border ?? Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
         boxShadow: [
@@ -207,13 +252,16 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
 
     return AnimationLimiter(
       child: ListView.builder(
-        padding: const EdgeInsets.all(20),
+        // Top padding badhayi taaki extendBodyBehindAppBar ki wajah se content AppBar ke peeche na chupe
+        padding: const EdgeInsets.only(top: kToolbarHeight + 80, left: 20, right: 20, bottom: 20),
         physics: const BouncingScrollPhysics(),
         itemCount: insights.length,
         itemBuilder: (context, index) {
-          final insight = insights[index];
-          final confidence = insight['confidence'] ?? 0;
-          final severity = insight['severity'] ?? 'Medium';
+          if (insights[index] is! Map) return const SizedBox.shrink();
+          final insight = Map<String, dynamic>.from(insights[index] as Map);
+          final rawConf = insight['confidence'];
+          final confidence = (rawConf is num) ? rawConf.toDouble() : 0.0;
+          final severity = insight['severity']?.toString() ?? 'Medium';
           final severityColor = AppColors.getSeverityColor(severity, isDark);
 
           return AnimationConfiguration.staggeredList(
@@ -245,7 +293,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: severityColor.withOpacity(0.5)),
                               ),
-                              child: Text(severity.toUpperCase(), style: TextStyle(color: severityColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                              child: Text(severity.toString().toUpperCase(), style: TextStyle(color: severityColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -272,7 +320,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
-                                  value: confidence / 100,
+                                  value: (confidence / 100).clamp(0.0, 1.0),
                                   minHeight: 8,
                                   backgroundColor: isDark ? Colors.white12 : Colors.black12,
                                   valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
@@ -310,12 +358,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
 
     return AnimationLimiter(
       child: ListView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.only(top: kToolbarHeight + 80, left: 20, right: 20, bottom: 20),
         physics: const BouncingScrollPhysics(),
         itemCount: actions.length,
         itemBuilder: (context, index) {
-          final action = actions[index];
-          final priority = action['priority'] ?? 'P3';
+          if (actions[index] is! Map) return const SizedBox.shrink();
+          final action = Map<String, dynamic>.from(actions[index] as Map);
+          final priority = action['priority']?.toString() ?? 'P3';
           
           Color priorityColor = Colors.grey;
           if (priority == 'P1') priorityColor = AppColors.darkRed;
@@ -375,7 +424,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
                             children: [
                               Icon(Icons.track_changes_rounded, size: 20, color: Theme.of(context).primaryColor),
                               const SizedBox(width: 12),
-                              Expanded(child: Text('Expected: ${action['expected_outcome']}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
+                              Expanded(child: Text('Expected: ${action['expected_outcome'] ?? "-"}', style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
                             ],
                           ),
                         ),
@@ -407,12 +456,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
   Widget _buildExecutionTab(Map<String, dynamic> execution, bool isDark) {
     if (execution.isEmpty) return _buildEmptyState('No execution data available.', Icons.terminal_rounded, isDark);
 
-    final email = execution['email'] ?? {};
-    final crm = execution['crm_update'] ?? {};
-    final dashboard = execution['dashboard_update'] ?? {};
+    // Null and Type Safety Checks
+    final email = execution['email'] is Map ? execution['email'] as Map<String, dynamic> : {};
+    final crm = execution['crm_update'] is Map ? execution['crm_update'] as Map<String, dynamic> : {};
+    final dashboard = execution['dashboard_update'] is Map ? execution['dashboard_update'] as Map<String, dynamic> : {};
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.only(top: kToolbarHeight + 80, left: 20, right: 20, bottom: 20),
       physics: const BouncingScrollPhysics(),
       children: [
         _buildSectionTitle('Dashboard Impact', Icons.dashboard_customize_rounded),
@@ -457,7 +507,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${dashboard['direction'] == 'up' ? '▲' : '▼'} ${dashboard['change_percent']}',
+                    '${dashboard['direction'] == 'up' ? '▲' : '▼'} ${dashboard['change_percent'] ?? "0%"}',
                     style: TextStyle(
                       color: dashboard['direction'] == 'up' ? AppColors.darkAccent : AppColors.darkRed,
                       fontWeight: FontWeight.bold,
@@ -487,7 +537,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text('Subject: ${email['subject']}', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text('Subject: ${email['subject'] ?? ""}', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 Divider(color: isDark ? Colors.white12 : Colors.black12),
                 const SizedBox(height: 16),
@@ -510,7 +560,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(color: isDark ? Colors.white12 : Colors.black12, borderRadius: BorderRadius.circular(8)),
-                  child: Text('Type: ${crm['record_type']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
+                  child: Text('Type: ${crm['record_type'] ?? "-"}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -559,7 +609,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> with SingleTicker
     if (signals.isEmpty) return _buildEmptyState('No signals extracted.', Icons.data_array_rounded, isDark);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.only(top: kToolbarHeight + 80, left: 20, right: 20, bottom: 20),
       physics: const BouncingScrollPhysics(),
       child: Wrap(
         spacing: 12,

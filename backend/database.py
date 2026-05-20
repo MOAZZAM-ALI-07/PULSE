@@ -5,7 +5,7 @@ import os
 import json
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "pulse.db")
+DB_PATH = os.environ.get("DB_PATH", "/tmp/pulse.db")
 
 
 async def init_db():
@@ -70,7 +70,6 @@ async def get_db():
 async def save_analysis(run_id: str, input_text: str, domain: str, step: str, data: dict):
     """Save or update analysis data."""
     async with aiosqlite.connect(DB_PATH) as db:
-        # Check if analysis exists
         cursor = await db.execute("SELECT id FROM analyses WHERE run_id = ?", (run_id,))
         row = await cursor.fetchone()
         
@@ -98,7 +97,6 @@ async def save_analysis(run_id: str, input_text: str, domain: str, step: str, da
                 (data_json, run_id)
             )
         
-        # Update severity and confidence if available
         if step == "insights" and isinstance(data, dict):
             insights = data.get("insights", [])
             if insights:
@@ -116,13 +114,16 @@ async def save_analysis(run_id: str, input_text: str, domain: str, step: str, da
 
 
 async def log_step(run_id: str, step: str, status: str, data: dict = None):
-    """Log a pipeline step."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "INSERT INTO pipeline_logs (run_id, step, status, data, timestamp) VALUES (?, ?, ?, ?, ?)",
-            (run_id, step, status, json.dumps(data) if data else None, datetime.utcnow().isoformat())
-        )
-        await db.commit()
+    """Log a pipeline step safely."""
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute(
+                "INSERT INTO pipeline_logs (run_id, step, status, data, timestamp) VALUES (?, ?, ?, ?, ?)",
+                (run_id, step, status, json.dumps(data) if data else None, datetime.utcnow().isoformat())
+            )
+            await db.commit()
+    except Exception as e:
+        print(f"Failed to log step {step}: {e}")
 
 
 async def get_logs(run_id: str):
@@ -162,6 +163,34 @@ async def get_analysis(run_id: str):
         return None
 
 
+async def get_cached_step(input_text: str, domain: str, step: str) -> dict | None:
+    """Retrieve previously generated data for the same input text to bypass rate limits."""
+    try:
+        column_map = {
+            "ingest": "ingestion_data",
+            "insights": "insights_data",
+            "impact": "impact_data",
+            "actions": "actions_data",
+            "execute": "execution_data",
+        }
+        col = column_map.get(step)
+        if not col:
+            return None
+            
+        async with aiosqlite.connect(DB_PATH) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                f"SELECT {col} FROM analyses WHERE LOWER(TRIM(input_text)) = LOWER(TRIM(?)) AND domain = ? AND {col} IS NOT NULL AND {col} != '' LIMIT 1",
+                (input_text, domain)
+            )
+            row = await cursor.fetchone()
+            if row and row[col]:
+                return json.loads(row[col])
+    except Exception as e:
+        print(f"Cache lookup failed: {e}")
+    return None
+
+
 async def save_feedback(run_id: str, insight_index: int, rating: str, comment: str = None):
     """Save user feedback on an insight."""
     async with aiosqlite.connect(DB_PATH) as db:
@@ -176,14 +205,12 @@ async def toggle_bookmark(run_id: str, insight_index: int = None):
     """Toggle bookmark for an analysis or insight."""
     async with aiosqlite.connect(DB_PATH) as db:
         if insight_index is None:
-            # Toggle analysis bookmark
             cursor = await db.execute("SELECT bookmarked FROM analyses WHERE run_id = ?", (run_id,))
             row = await cursor.fetchone()
             if row:
                 new_val = 0 if row[0] else 1
                 await db.execute("UPDATE analyses SET bookmarked = ? WHERE run_id = ?", (new_val, run_id))
         else:
-            # Toggle insight bookmark
             cursor = await db.execute(
                 "SELECT id FROM bookmarks WHERE run_id = ? AND insight_index = ?",
                 (run_id, insight_index)
