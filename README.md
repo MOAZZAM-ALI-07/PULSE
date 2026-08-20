@@ -1,9 +1,7 @@
 # Pulse — Business Intelligence Platform
-
 Pulse is a production-grade business intelligence platform built with Flutter and a FastAPI Python backend. It utilizes the Gemini 2.0 Flash API to ingest, analyze, assess, plan, and simulate actions based on unstructured data.
 
 ## Architecture
-
 ```mermaid
 graph TB
     subgraph "Flutter Mobile App"
@@ -81,18 +79,26 @@ graph TB
    - **Raw Signals**: Shows all 6+ signals extracted from the text.
 8. Tap the "Summarize" icon in the app bar to view the **Report Screen** and see the severity overview and export options.
 
-## Screenshots List (Implemented Screens)
-1. Splash Screen (Animated Pulse Logo)
-2. Onboarding (3 Slides with Smooth Swipes)
-3. Home Screen (Greeting, Summary Card, Domain Pills, Recent Analyses)
-4. Input Screen (Text area, PDF Upload, Domain selector)
-5. Processing Screen (Glowing connected nodes, real-time logs)
-6. Results Screen - Insights Tab (Severity badges, confidence bars)
-7. Results Screen - Actions Tab (Ranked actions, expected outcomes)
-8. Results Screen - Execution Tab (Dashboard updates, Email drafts, CRM updates)
-9. Results Screen - Raw Signals Tab (Extracted chips)
-10. Report Screen (Summary, Export to PDF/JSON)
-11. Comparison Screen (Compare 2 past analyses)
-12. Dashboard Screen (Animated Bar and Pie Charts)
-13. History Screen (List of past analyses with dismissible swiping)
-14. Settings Screen (Theme toggle, notifications, etc.)
+## 📸 Screenshots
+
+![Screenshot 1](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.37%20PM%20(1).jpeg)
+![Screenshot 2](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.37%20PM.jpeg)
+![Screenshot 3](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.38%20PM%20(1).jpeg)
+![Screenshot 4](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.38%20PM%20(2).jpeg)
+![Screenshot 5](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.38%20PM.jpeg)
+![Screenshot 6](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.39%20PM%20(1).jpeg)
+![Screenshot 7](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.39%20PM.jpeg)
+![Screenshot 8](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.40%20PM%20(1).jpeg)
+![Screenshot 9](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.40%20PM.jpeg)
+![Screenshot 10](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.41%20PM%20(1).jpeg)
+![Screenshot 11](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.41%20PM.jpeg)
+![Screenshot 12](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.42%20PM%20(1).jpeg)
+![Screenshot 13](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.42%20PM.jpeg)
+![Screenshot 14](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.43%20PM.jpeg)
+![Screenshot 15](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.44%20PM%20(1).jpeg)
+![Screenshot 16](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.44%20PM.jpeg)
+![Screenshot 17](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.45%20PM%20(1).jpeg)
+![Screenshot 18](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.45%20PM.jpeg)
+![Screenshot 19](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.46%20PM%20(1).jpeg)
+![Screenshot 20](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.46%20PM.jpeg)
+![Screenshot 21](SCREENSHOTS/WhatsApp%20Image%202026-08-20%20at%206.38.47%20PM.jpeg)
